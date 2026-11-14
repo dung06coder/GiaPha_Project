@@ -19,3 +19,42 @@ class ReadOnlyOrHideAliveData(BasePermission):
     """
     def has_permission(self, request, view):
         return request.method in SAFE_METHODS
+    
+class IsAdminOrEditorForEdit(BasePermission):
+    """
+    Quyền truy cập API CRUD:
+    - GET (Read): Ai cũng được đọc (Guest, Member, Editor, Admin).
+    - POST, PUT, PATCH, DELETE: Chỉ Admin và Editor mới có quyền.
+      * Admin: Toàn quyền.
+      * Editor: Chỉ sửa được dữ liệu thuộc Chi/Phái mình quản lý.
+    """
+    def has_permission(self, request, view):
+        # Mọi người đều được phép gọi lệnh đọc (GET, HEAD)
+        if request.method in SAFE_METHODS:
+            return True
+        # Chỉ Admin và Editor mới được gửi lệnh thêm/sửa/xóa
+        return bool(request.user and request.user.is_authenticated and request.user.role in ['ADMIN', 'EDITOR'])
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+            
+        if request.user.role == 'ADMIN':
+            return True
+            
+        if request.user.role == 'EDITOR':
+            # Lấy Chi phái mà Editor này đang được giao quản lý
+            managed_branch = request.user.managed_branch_id
+            if not managed_branch:
+                return False
+                
+            # Kiểm tra xem dữ liệu đang bị sửa thuộc về Chi phái nào
+            model_name = obj.__class__.__name__
+            if model_name == 'Branch':
+                return obj.id == managed_branch
+            elif model_name == 'Member':
+                return obj.branch_id == managed_branch
+            elif model_name == 'Marriage':
+                return obj.husband.branch_id == managed_branch
+                
+        return False
