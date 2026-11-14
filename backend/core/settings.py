@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/6.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
-    
+
 from pathlib import Path
 from decouple import Config, RepositoryEnv, Csv
 
@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    # Local apps
+    'genealogy',
 ]
 
 MIDDLEWARE = [
@@ -165,3 +167,4 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+AUTH_USER_MODEL = 'genealogy.User'
