@@ -1,11 +1,15 @@
+import datetime
+
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.decorators import action
+from lunarcalendar import Lunar, Converter, DateNotExist
 
 from .utils import calculate_relationship
-from .models import Branch, Member, Marriage
-from .serializers import UserMeSerializer, BranchSerializer, MemberSerializer, MarriageSerializer
+from .models import Branch, Member, Marriage,Event
+from .serializers import UserMeSerializer, BranchSerializer, MemberSerializer, MarriageSerializer,EventSerializer
 from .permissions import IsAdminOrEditorForEdit,ReadOnlyOrHideAliveData
 from django.db import connection
 
@@ -175,4 +179,56 @@ class RelationshipView(APIView):
                 "person_b_calls_a": term_b_calls_a,
                 "message": f"Theo vai vế, {member_a.full_name} gọi {member_b.full_name} là {term_a_calls_b}."
             }
+        })
+
+class EventViewSet(viewsets.ModelViewSet):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+    permission_classes = [IsAdminOrEditorForEdit]
+
+    @action(detail=False, methods=['get'], url_path='upcoming-anniversaries', permission_classes=[IsAuthenticated])
+    def upcoming_anniversaries(self, request):
+        today = datetime.date.today()
+        current_year = today.year
+        
+        # 1. Quét các thành viên đã mất có lưu ngày tháng mất Âm lịch
+        deceased_members = Member.objects.filter(
+            is_alive=False, 
+            death_date_lunar_day__isnull=False, 
+            death_date_lunar_month__isnull=False
+        )
+        
+        upcoming_list = []
+        for member in deceased_members:
+            try:
+                # 2. Quy đổi ngày giỗ Âm lịch sang Dương lịch của năm nay
+                lunar_date = Lunar(current_year, member.death_date_lunar_month, member.death_date_lunar_day, isleap=False)
+                solar_date = Converter.Lunar2Solar(lunar_date).to_date()
+                
+                # 3. Nếu ngày giỗ năm nay đã qua, tính ngày giỗ cho năm sau
+                if solar_date < today:
+                    lunar_date_next = Lunar(current_year + 1, member.death_date_lunar_month, member.death_date_lunar_day, isleap=False)
+                    solar_date = Converter.Lunar2Solar(lunar_date_next).to_date()
+                    
+                days_left = (solar_date - today).days
+                
+                upcoming_list.append({
+                    "member_id": member.id,
+                    "full_name": member.full_name,
+                    "lunar_death_date": f"{member.death_date_lunar_day:02d}/{member.death_date_lunar_month:02d}",
+                    "solar_anniversary_date": solar_date.strftime("%Y-%m-%d"),
+                    "days_left": days_left,
+                    "generation": member.generation
+                })
+            except DateNotExist:
+                # Bỏ qua nếu dữ liệu Âm lịch không hợp lệ (VD: ngày 30 tháng 2 Âm)
+                continue 
+        
+        # 4. Sắp xếp danh sách ưu tiên ngày giỗ gần nhất
+        upcoming_list.sort(key=lambda x: x['days_left'])
+        
+        # Trả về 10 đám giỗ sắp tới
+        return Response({
+            "message": "Danh sách lịch giỗ sắp tới",
+            "data": upcoming_list[:10]
         })

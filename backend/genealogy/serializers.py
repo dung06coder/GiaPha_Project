@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User,Branch,Member, Marriage
+from .models import User,Branch,Member, Marriage,Event
 
 class UserMeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -65,3 +65,8 @@ class MemberSerializer(serializers.ModelSerializer):
                         "Trưởng chi (Editor) chỉ được phép thêm/sửa thành viên thuộc Chi mình quản lý.")
         
         return value
+    
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = '__all__'
