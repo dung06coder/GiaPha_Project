@@ -18,7 +18,9 @@ class ReadOnlyOrHideAliveData(BasePermission):
     (Logic ẩn dữ liệu sẽ được kết hợp xử lý trong file serializers.py ở Task 2.2)
     """
     def has_permission(self, request, view):
-        return request.method in SAFE_METHODS
+        if request.method in SAFE_METHODS:
+            return True;
+        return bool(request.user and request.user.is_authenticated)
     
 class IsAdminOrEditorForEdit(BasePermission):
     """
@@ -58,3 +60,4 @@ class IsAdminOrEditorForEdit(BasePermission):
                 return obj.husband.branch_id == managed_branch
                 
         return False
+    
