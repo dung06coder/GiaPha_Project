@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 
+from .utils import calculate_relationship
 from .models import Branch, Member, Marriage
 from .serializers import UserMeSerializer, BranchSerializer, MemberSerializer, MarriageSerializer
 from .permissions import IsAdminOrEditorForEdit,ReadOnlyOrHideAliveData
@@ -143,4 +144,35 @@ class TreeView(APIView):
         return Response({
             "nodes": nodes,
             "edges": edges
+        })
+        
+class RelationshipView(APIView):
+    permission_classes = [AllowAny] # Mở cho mọi người kiểm tra xưng hô
+
+    def get(self, request):
+        person_a_id = request.query_params.get('person_a')
+        person_b_id = request.query_params.get('person_b')
+
+        if not person_a_id or not person_b_id:
+            return Response({"error": "Thiếu tham số person_a hoặc person_b"}, status=400)
+
+        try:
+            member_a = Member.objects.get(id=person_a_id)
+            member_b = Member.objects.get(id=person_b_id)
+        except Member.DoesNotExist:
+            return Response({"error": "Không tìm thấy thành viên trong cơ sở dữ liệu"}, status=404)
+
+        # Tính toán A gọi B là gì
+        term_a_calls_b = calculate_relationship(person_a_id, person_b_id)
+        # Tính toán B gọi A là gì
+        term_b_calls_a = calculate_relationship(person_b_id, person_a_id)
+
+        return Response({
+            "person_a": member_a.full_name,
+            "person_b": member_b.full_name,
+            "lca_logic": {
+                "person_a_calls_b": term_a_calls_b,
+                "person_b_calls_a": term_b_calls_a,
+                "message": f"Theo vai vế, {member_a.full_name} gọi {member_b.full_name} là {term_a_calls_b}."
+            }
         })
