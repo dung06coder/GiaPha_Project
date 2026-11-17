@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-parchment font-sans text-stone-800;
+  }
+
+  h1, h2, h3, h4, .font-traditional {
+    @apply font-serif;
+  }
+}
