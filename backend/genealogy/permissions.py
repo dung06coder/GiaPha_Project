@@ -31,11 +31,13 @@ class IsAdminOrEditorForEdit(BasePermission):
       * Editor: Chỉ sửa được dữ liệu thuộc Chi/Phái mình quản lý.
     """
     def has_permission(self, request, view):
-        # Mọi người đều được phép gọi lệnh đọc (GET, HEAD)
         if request.method in SAFE_METHODS:
             return True
-        # Chỉ Admin và Editor mới được gửi lệnh thêm/sửa/xóa
-        return bool(request.user and request.user.is_authenticated and request.user.role in ['ADMIN', 'EDITOR'])
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_superuser or request.user.role in ['ADMIN', 'EDITOR'])
+    )
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
