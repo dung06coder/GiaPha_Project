@@ -4,6 +4,8 @@ import MainLayout from './components/MainLayout';
 import LoginPage from './pages/LoginPage';
 import MembersPage from './pages/MembersPage';
 import FamilyTreePage from './pages/FamilyTreePage';
+import RelationshipPage from './pages/RelationshipPage';
+import EventsHistoryPage from './pages/EventsHistoryPage';
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const token = localStorage.getItem('access_token');
@@ -29,6 +31,8 @@ function App() {
           <Route index element={<Navigate to="/tree" replace />} />
           <Route path="tree" element={<FamilyTreePage />} />
           <Route path="members" element={<MembersPage />} />
+          <Route path="relationship" element={<RelationshipPage />} />
+          <Route path="events-history" element={<EventsHistoryPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

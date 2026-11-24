@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, BookHeart, GitFork, Users } from 'lucide-react';
-
+import { LogOut, BookHeart, GitFork, Users,ArrowLeftRight, Calendar } from 'lucide-react';
 export default function MainLayout() {
   const navigate = useNavigate();
 
@@ -42,6 +41,14 @@ export default function MainLayout() {
               <NavLink to="/members" className={navLinkClass}>
                 <Users className="w-4 h-4" />
                 <span>Sổ Đinh</span>
+              </NavLink>
+              <NavLink to="/relationship" className={navLinkClass}>
+                <ArrowLeftRight className="w-4 h-4" />
+                <span>Xưng Hô</span>
+              </NavLink>
+              <NavLink to="/events-history" className={navLinkClass}>
+                <Calendar className="w-4 h-4" />
+                <span>Giỗ &amp; Phả Ký</span>
               </NavLink>
             </nav>
           </div>
