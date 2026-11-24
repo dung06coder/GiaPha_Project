@@ -6,6 +6,7 @@ import type { FamilyMemberNode } from '../utils/treeLayout';
 function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
   const isMale = data.gender === 'MALE';
   const isFemale = data.gender === 'FEMALE';
+  const isHighlighted = Boolean(data.isHighlighted);
 
   const badgeClass = isMale
     ? 'bg-sky-100 text-sky-900 border-sky-300'
@@ -21,13 +22,14 @@ function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
 
   return (
     <div
-      className={`w-[220px] min-h-[90px] rounded-xl bg-white px-3 py-2.5 shadow-md border-2 transition-all ${
-        selected
-          ? 'border-crimson ring-2 ring-gold/70'
-          : 'border-gold/80 hover:border-crimson'
+      className={`w-[220px] min-h-[90px] rounded-xl px-3 py-2.5 shadow-md border-2 transition-all ${
+        isHighlighted
+          ? 'bg-amber-50 border-crimson ring-4 ring-gold shadow-lg scale-[1.03]'
+          : selected
+            ? 'bg-white border-crimson ring-2 ring-gold/70'
+            : 'bg-white border-gold/80 hover:border-crimson'
       }`}
     >
-      {/* Điểm nối từ trên xuống (Cha/Mẹ -> Con) */}
       <Handle
         type="target"
         position={Position.Top}
@@ -35,7 +37,6 @@ function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
         className="!w-2.5 !h-2.5 !bg-wood !border-white"
       />
 
-      {/* Điểm nối ngang cho Vợ - Chồng */}
       <Handle
         type="source"
         position={Position.Right}
@@ -50,7 +51,6 @@ function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
       />
 
       <div className="flex items-center gap-3">
-        {/* Ảnh đại diện tròn 48x48px */}
         <div className="w-12 h-12 rounded-full shrink-0 overflow-hidden border-2 border-gold bg-parchment flex items-center justify-center text-wood">
           {data.avatar_url ? (
             <img
@@ -63,7 +63,6 @@ function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
           )}
         </div>
 
-        {/* Thông tin bên phải */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
             <span
@@ -86,7 +85,6 @@ function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
         </div>
       </div>
 
-      {/* Điểm nối xuống đời dưới (Cha/Mẹ -> Con) */}
       <Handle
         type="source"
         position={Position.Bottom}
