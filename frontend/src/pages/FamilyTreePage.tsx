@@ -8,12 +8,15 @@ import {
   MiniMap,
   useReactFlow,
   type Edge,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { GitFork, Search, RotateCcw } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import CustomMemberNode from '../components/CustomMemberNode';
 import SpouseEdge from '../components/SpouseEdge';
+import MemberDetailDrawer from '../components/MemberDetailDrawer';
+import MemberModal, { type MemberItem } from '../components/MemberModal';
 import { getLayoutedElements, type FamilyMemberNode } from '../utils/treeLayout';
 import {
   filterBloodlineTree,
@@ -47,6 +50,8 @@ function FamilyTreeCanvas() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [selectedDrawerMemberId, setSelectedDrawerMemberId] = useState<string | null>(null);
+  const [editingFullMember, setEditingFullMember] = useState<MemberItem | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('ALL');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [centerMemberId, setCenterMemberId] = useState<string>('');
@@ -72,7 +77,6 @@ function FamilyTreeCanvas() {
     [branches]
   );
 
-  // Chuẩn hóa node & edge cơ bản từ API /tree/
   const { baseNodes, baseEdges } = useMemo(() => {
     const rawNodes: FamilyMemberNode[] = (data?.nodes || []).map((node) => ({
       ...node,
@@ -85,38 +89,52 @@ function FamilyTreeCanvas() {
       },
     }));
 
-    const rawEdges: Edge[] = (data?.edges || []).map((edge) => {
+    const validIds = new Set(rawNodes.map((n) => n.id));
+    const seenEdges = new Set<string>();
+
+    const rawEdges: Edge[] = [];
+    (data?.edges || []).forEach((edge) => {
+      if (!validIds.has(edge.source) || !validIds.has(edge.target)) return;
+      if (edge.source === edge.target) return;
+
       const isSpouse =
         edge.type === 'spouseEdge' ||
         edge.id.startsWith('edge-h') ||
         Boolean(edge.style?.strokeDasharray);
 
+      const pairKey = isSpouse
+        ? `spouse:${[edge.source, edge.target].sort().join('_')}`
+        : `parent:${edge.source}->${edge.target}`;
+
+      if (seenEdges.has(pairKey)) return;
+      seenEdges.add(pairKey);
+
       if (isSpouse) {
-        return {
+        rawEdges.push({
           ...edge,
           type: 'spouseEdge',
-          sourceHandle: edge.sourceHandle || 'right',
-          targetHandle: edge.targetHandle || 'left',
-        };
+          sourceHandle: 'right',
+          targetHandle: 'left',
+        });
+      } else {
+        rawEdges.push({
+          ...edge,
+          type: 'smoothstep',
+          sourceHandle: 'bottom',
+          targetHandle: 'top',
+          animated: false,
+          style: {
+            stroke: '#78716C',
+            strokeWidth: 2,
+            ...edge.style,
+          },
+        });
       }
-
-      return {
-        ...edge,
-        type: edge.type || 'smoothstep',
-        sourceHandle: edge.sourceHandle || 'bottom',
-        targetHandle: edge.targetHandle || 'top',
-        style: {
-          stroke: '#78716C',
-          strokeWidth: 2,
-          ...edge.style,
-        },
-      };
     });
 
     return { baseNodes: rawNodes, baseEdges: rawEdges };
   }, [data, branchNameMap]);
 
-  // Danh sách gợi ý theo từ khóa tìm kiếm
   const searchSuggestions = useMemo(() => {
     const keyword = searchQuery.trim().toLowerCase();
     if (!keyword) return [];
@@ -125,7 +143,6 @@ function FamilyTreeCanvas() {
       .slice(0, 6);
   }, [baseNodes, searchQuery]);
 
-  // Áp dụng bộ lọc (Tất cả / Theo Chi / Cây cận huyết 3 đời trên - 3 đời dưới) + Dagre layout
   const { nodes, edges } = useMemo(() => {
     let filtered = { nodes: baseNodes, edges: baseEdges };
 
@@ -137,13 +154,17 @@ function FamilyTreeCanvas() {
     }
 
     const layouted = getLayoutedElements(filtered.nodes, filtered.edges, 'TB');
-    const activeCenter = viewMode === 'BLOODLINE' ? centerMemberId || baseNodes[0]?.id : null;
+    const activeCenter =
+      viewMode === 'BLOODLINE' ? centerMemberId || baseNodes[0]?.id : null;
 
     const styledNodes = layouted.nodes.map((n) => ({
       ...n,
       data: {
         ...n.data,
-        isHighlighted: n.id === highlightedNodeId || n.id === activeCenter,
+        isHighlighted:
+          n.id === highlightedNodeId ||
+          n.id === activeCenter ||
+          n.id === selectedDrawerMemberId,
       },
     }));
 
@@ -155,6 +176,7 @@ function FamilyTreeCanvas() {
     selectedBranchId,
     centerMemberId,
     highlightedNodeId,
+    selectedDrawerMemberId,
   ]);
 
   const handleFocusNode = (targetNode: FamilyMemberNode) => {
@@ -166,6 +188,10 @@ function FamilyTreeCanvas() {
     const centerY = layoutNode.position.y + NODE_HEIGHT / 2;
 
     setCenter(centerX, centerY, { zoom: 1.15, duration: 600 });
+  };
+
+  const handleNodeClick: NodeMouseHandler<FamilyMemberNode> = (_, clickedNode) => {
+    setSelectedDrawerMemberId(clickedNode.id);
   };
 
   const handleResetFilters = () => {
@@ -190,7 +216,7 @@ function FamilyTreeCanvas() {
             <div>
               <h2 className="text-xl font-serif font-bold text-wood">Phả Đồ Dòng Họ</h2>
               <p className="text-xs text-stone-500">
-                Nét liền nâu xám (#78716C): Cha/Mẹ - Con • Nét đứt đỏ hồng (#BE123C): Vợ - Chồng
+                Click vào thẻ thành viên để xem chi tiết tiểu sử và thêm nhanh Con / Vợ / Chồng
               </p>
             </div>
           </div>
@@ -205,9 +231,7 @@ function FamilyTreeCanvas() {
           </button>
         </div>
 
-        {/* Thanh Tìm kiếm + Bộ lọc Chi / Cây cận huyết */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-stone-100">
-          {/* Ô tìm kiếm & focus camera */}
           <div className="relative">
             <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -237,7 +261,6 @@ function FamilyTreeCanvas() {
             )}
           </div>
 
-          {/* Chọn chế độ xem */}
           <div>
             <select
               value={viewMode}
@@ -256,7 +279,6 @@ function FamilyTreeCanvas() {
             </select>
           </div>
 
-          {/* Điều kiện phụ theo chế độ xem */}
           <div>
             {viewMode === 'BRANCH' && (
               <select
@@ -313,6 +335,7 @@ function FamilyTreeCanvas() {
             edges={edges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            onNodeClick={handleNodeClick}
             fitView
           >
             <Background gap={20} color="#E7E0D3" />
@@ -321,6 +344,36 @@ function FamilyTreeCanvas() {
           </ReactFlow>
         )}
       </div>
+
+      <MemberDetailDrawer
+        memberId={selectedDrawerMemberId}
+        onClose={() => setSelectedDrawerMemberId(null)}
+        onSelectMember={(nextId) => setSelectedDrawerMemberId(nextId)}
+        allNodes={baseNodes}
+        allEdges={baseEdges}
+        onEditFullMember={(memberDetail) => {
+          setEditingFullMember({
+            id: memberDetail.id,
+            full_name: memberDetail.full_name,
+            alias_name: memberDetail.alias_name,
+            gender: memberDetail.gender,
+            generation: memberDetail.generation,
+            branch: memberDetail.branch,
+            birth_order: memberDetail.birth_order,
+            is_alive: memberDetail.is_alive,
+            birth_date_solar: memberDetail.birth_date_solar,
+            biography: memberDetail.biography,
+          });
+        }}
+      />
+
+      <MemberModal
+        key={editingFullMember ? `drawer-edit-${editingFullMember.id}` : 'drawer-edit-closed'}
+        isOpen={Boolean(editingFullMember)}
+        onClose={() => setEditingFullMember(null)}
+        editingMember={editingFullMember}
+        branches={branches}
+      />
     </div>
   );
 }

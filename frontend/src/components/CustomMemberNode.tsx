@@ -4,15 +4,7 @@ import { User } from 'lucide-react';
 import type { FamilyMemberNode } from '../utils/treeLayout';
 
 function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
-  const isMale = data.gender === 'MALE';
-  const isFemale = data.gender === 'FEMALE';
   const isHighlighted = Boolean(data.isHighlighted);
-
-  const badgeClass = isMale
-    ? 'bg-sky-100 text-sky-900 border-sky-300'
-    : isFemale
-      ? 'bg-rose-100 text-rose-900 border-rose-300'
-      : 'bg-stone-100 text-stone-700 border-stone-300';
 
   const statusText = data.is_alive
     ? 'Còn sống'
@@ -64,18 +56,11 @@ function CustomMemberNode({ data, selected }: NodeProps<FamilyMemberNode>) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-            <span
-              className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded border ${badgeClass}`}
-            >
-              Đời thứ {data.generation}
+          {data.branch_name && (
+            <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-amber-50 text-wood border-gold/50 truncate max-w-full mb-0.5">
+              {data.branch_name}
             </span>
-            {data.branch_name && (
-              <span className="text-[10px] text-wood/80 truncate max-w-[85px]">
-                • {data.branch_name}
-              </span>
-            )}
-          </div>
+          )}
 
           <p className="font-serif font-bold text-sm text-stone-900 truncate leading-snug">
             {data.full_name}
