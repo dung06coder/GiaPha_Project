@@ -4,7 +4,7 @@ import MainLayout from './components/MainLayout';
 import LoginPage from './pages/LoginPage';
 import type { JSX } from 'react/jsx-runtime';
 import MembersPage from './pages/MembersPage';
-
+import FamilyTreePage from './pages/FamilyTreePage';
 
 
 // Giao diện tạm cho Trang chủ sau khi đăng nhập thành công
@@ -29,7 +29,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        
+        <Route path="tree" element={<FamilyTreePage />} />
         {/* Các trang bắt buộc đăng nhập sẽ nằm trong Route này */}
         <Route 
           path="/" 
